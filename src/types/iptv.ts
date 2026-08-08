@@ -219,6 +219,14 @@ export interface ContinueWatchingItem {
   lastWatched: number
 }
 
+export interface CustomMediaFolder {
+  id: string
+  name: string
+  items: PlayableMedia[]
+  createdAt: number
+  updatedAt: number
+}
+
 export interface AppUpdateInfo {
   available: boolean
   version: string

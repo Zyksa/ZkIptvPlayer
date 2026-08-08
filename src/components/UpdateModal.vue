@@ -18,11 +18,23 @@
       </div>
 
       <!-- Release Notes -->
-      <div class="space-y-1.5 p-3.5 rounded-2xl bg-obsidian-950/80 border border-white/5 text-xs text-slate-300">
-        <p class="font-bold text-slate-200">Nouveautés & Améliorations :</p>
-        <p class="line-clamp-4 leading-relaxed font-sans text-slate-400">
-          {{ updateInfo?.releaseNotes || 'Nouvelle version de ZkPlayer Desktop disponible.' }}
-        </p>
+      <div class="p-3.5 rounded-2xl bg-obsidian-950/80 border border-white/5 text-xs text-slate-300">
+        <div class="flex items-center justify-between gap-3 mb-2.5">
+          <p class="font-bold text-slate-100">Changelog</p>
+          <span class="text-[9px] uppercase tracking-widest text-brand-accent/80">v{{ updateInfo?.version }}</span>
+        </div>
+        <div class="update-changelog max-h-52 overflow-y-auto pr-2 space-y-2">
+          <template v-for="(line, index) in formattedReleaseNotes" :key="`${line.type}-${index}`">
+            <p v-if="line.type === 'heading'" class="pt-1 text-[11px] font-bold text-slate-200">
+              {{ line.text }}
+            </p>
+            <div v-else-if="line.type === 'bullet'" class="flex items-start gap-2 leading-relaxed text-slate-400">
+              <span class="mt-[0.42rem] w-1 h-1 rounded-full bg-brand-accent shadow-[0_0_6px_rgba(56,189,248,0.5)] shrink-0"></span>
+              <span>{{ line.text }}</span>
+            </div>
+            <p v-else class="leading-relaxed text-slate-400">{{ line.text }}</p>
+          </template>
+        </div>
       </div>
 
       <!-- Progress -->
@@ -80,6 +92,37 @@ const dismissed = ref(false)
 
 const visible = computed(() => {
   return !!updateInfo.value?.available && !dismissed.value
+})
+
+type ReleaseNoteLine = {
+  type: 'heading' | 'bullet' | 'text'
+  text: string
+}
+
+const cleanMarkdown = (value: string) => value
+  .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+  .replace(/[*_`~]/g, '')
+  .trim()
+
+const formattedReleaseNotes = computed<ReleaseNoteLine[]>(() => {
+  const notes = updateInfo.value?.releaseNotes?.trim()
+    || 'Nouvelle version de ZkPlayer Desktop disponible.'
+
+  return notes
+    .split(/\r?\n/)
+    .map((rawLine): ReleaseNoteLine | null => {
+      const line = rawLine.trim()
+      if (!line || /^-{3,}$/.test(line)) return null
+
+      const heading = line.match(/^#{1,6}\s+(.+)$/)
+      if (heading) return { type: 'heading', text: cleanMarkdown(heading[1]) }
+
+      const bullet = line.match(/^(?:[-*+]\s+|\d+[.)]\s+)(.+)$/)
+      if (bullet) return { type: 'bullet', text: cleanMarkdown(bullet[1]) }
+
+      return { type: 'text', text: cleanMarkdown(line) }
+    })
+    .filter((line): line is ReleaseNoteLine => line !== null)
 })
 
 const progressPercent = computed(() => {

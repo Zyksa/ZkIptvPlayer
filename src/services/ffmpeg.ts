@@ -5,11 +5,10 @@ export interface FfmpegStatus {
   available: boolean
   path: string
   downloading: boolean
-}
-
-export interface FfmpegDownloadProgress {
-  status: 'idle' | 'downloading' | 'done' | 'error'
-  message?: string
+  phase: 'idle' | 'preparing' | 'downloading' | 'extracting' | 'installing' | 'done' | 'error'
+  downloaded_bytes: number
+  total_bytes: number
+  error: string
 }
 
 /**
@@ -17,13 +16,29 @@ export interface FfmpegDownloadProgress {
  */
 export async function getFfmpegStatus(): Promise<FfmpegStatus> {
   if (!isTauri()) {
-    return { available: false, path: '', downloading: false }
+    return {
+      available: false,
+      path: '',
+      downloading: false,
+      phase: 'idle',
+      downloaded_bytes: 0,
+      total_bytes: 0,
+      error: '',
+    }
   }
   try {
     return await invoke<FfmpegStatus>('get_ffmpeg_status')
   } catch (e) {
     console.warn('Failed to fetch FFmpeg status:', e)
-    return { available: false, path: '', downloading: false }
+    return {
+      available: false,
+      path: '',
+      downloading: false,
+      phase: 'idle',
+      downloaded_bytes: 0,
+      total_bytes: 0,
+      error: '',
+    }
   }
 }
 
@@ -31,14 +46,9 @@ export async function getFfmpegStatus(): Promise<FfmpegStatus> {
  * Trigger the automatic download and installation of FFmpeg.
  * Returns the path to the installed ffmpeg.exe on success.
  */
-export async function ensureFfmpeg(): Promise<string | null> {
+export async function ensureFfmpeg(): Promise<string> {
   if (!isTauri()) {
-    return null
+    throw new Error('Installation native indisponible dans le navigateur')
   }
-  try {
-    return await invoke<string>('ensure_ffmpeg')
-  } catch (e) {
-    console.error('Failed to ensure FFmpeg:', e)
-    return null
-  }
+  return invoke<string>('ensure_ffmpeg')
 }

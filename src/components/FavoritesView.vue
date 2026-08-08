@@ -25,8 +25,9 @@
           v-for="item in iptvStore.continueWatching"
           :key="item.id"
           @click="resumeWatch(item)"
-          class="glass-card p-3 rounded-2xl cursor-pointer group space-y-3"
+          class="glass-card p-3 rounded-2xl cursor-pointer group space-y-3 relative"
         >
+          <CustomFolderButton :media="item.media" class="absolute top-2 right-2 z-30" />
           <div class="flex items-center space-x-3">
             <div class="w-12 h-16 rounded-xl bg-obsidian-950 border border-white/10 overflow-hidden shrink-0">
               <img
@@ -102,9 +103,12 @@
               <h3 class="content-title text-xs font-semibold text-slate-200 truncate">{{ fav.title }}</h3>
               <span class="text-[9px] uppercase font-mono text-slate-500">{{ fav.type }}</span>
             </div>
-            <button type="button" @click.prevent.stop="iptvStore.toggleFavorite(fav)" class="text-rose-400 p-1 hover:bg-rose-500/10 rounded-lg">
-              <Trash2 class="w-4 h-4" />
-            </button>
+            <div class="flex items-center gap-1.5">
+              <CustomFolderButton :media="fav" />
+              <button type="button" @click.prevent.stop="iptvStore.toggleFavorite(fav)" class="text-rose-400 p-1 hover:bg-rose-500/10 rounded-lg">
+                <Trash2 class="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -118,6 +122,7 @@ import type { ContinueWatchingItem, PlayableMedia } from '@/types/iptv'
 import { useIptvStore } from '@/stores/iptv'
 import { usePlayerStore } from '@/stores/player'
 import { isSafeImageUrl } from '@/utils/url'
+import CustomFolderButton from '@/components/CustomFolderButton.vue'
 
 const iptvStore = useIptvStore()
 const playerStore = usePlayerStore()

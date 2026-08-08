@@ -5,7 +5,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 use std::sync::{OnceLock, RwLock};
 use std::time::{Duration, Instant};
 use tauri::Window;
@@ -39,6 +39,9 @@ fn hidden_async_command<S: AsRef<OsStr>>(program: S) -> AsyncCommand {
 // cache `None` and force a restart after a successful installation.
 static FFMPEG_PATH: OnceLock<RwLock<FfmpegPathState>> = OnceLock::new();
 static DOWNLOAD_STATE: AtomicU8 = AtomicU8::new(FfmpegDownloadState::Idle as u8);
+static DOWNLOAD_BYTES: AtomicU64 = AtomicU64::new(0);
+static DOWNLOAD_TOTAL_BYTES: AtomicU64 = AtomicU64::new(0);
+static DOWNLOAD_ERROR: OnceLock<RwLock<String>> = OnceLock::new();
 
 // Reuse HTTP clients so DNS resolution, TCP sockets and TLS sessions are pooled.
 static API_HTTP_CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
@@ -97,7 +100,10 @@ fn parse_ffmpeg_duration(line: &str) -> Option<f64> {
 enum FfmpegDownloadState {
     #[default]
     Idle,
+    Preparing,
     Downloading,
+    Extracting,
+    Installing,
     Done,
     Failed,
 }
@@ -105,9 +111,12 @@ enum FfmpegDownloadState {
 impl FfmpegDownloadState {
     fn current() -> Self {
         match DOWNLOAD_STATE.load(Ordering::Acquire) {
-            1 => Self::Downloading,
-            2 => Self::Done,
-            3 => Self::Failed,
+            1 => Self::Preparing,
+            2 => Self::Downloading,
+            3 => Self::Extracting,
+            4 => Self::Installing,
+            5 => Self::Done,
+            6 => Self::Failed,
             _ => Self::Idle,
         }
     }
@@ -115,14 +124,53 @@ impl FfmpegDownloadState {
     fn store(self) {
         DOWNLOAD_STATE.store(self as u8, Ordering::Release);
     }
+
+    fn is_active(self) -> bool {
+        matches!(
+            self,
+            Self::Preparing | Self::Downloading | Self::Extracting | Self::Installing
+        )
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Idle => "idle",
+            Self::Preparing => "preparing",
+            Self::Downloading => "downloading",
+            Self::Extracting => "extracting",
+            Self::Installing => "installing",
+            Self::Done => "done",
+            Self::Failed => "error",
+        }
+    }
+}
+
+fn download_error() -> &'static RwLock<String> {
+    DOWNLOAD_ERROR.get_or_init(|| RwLock::new(String::new()))
+}
+
+fn reset_download_progress() {
+    DOWNLOAD_BYTES.store(0, Ordering::Release);
+    DOWNLOAD_TOTAL_BYTES.store(0, Ordering::Release);
+    download_error()
+        .write()
+        .unwrap_or_else(|error| error.into_inner())
+        .clear();
+}
+
+fn fail_download(message: &str) {
+    *download_error()
+        .write()
+        .unwrap_or_else(|error| error.into_inner()) = message.to_string();
+    FfmpegDownloadState::Failed.store();
 }
 
 struct DownloadStateGuard;
 
 impl Drop for DownloadStateGuard {
     fn drop(&mut self) {
-        if FfmpegDownloadState::current() == FfmpegDownloadState::Downloading {
-            FfmpegDownloadState::Failed.store();
+        if FfmpegDownloadState::current().is_active() {
+            fail_download("L'installation de FFmpeg a été interrompue.");
         }
     }
 }
@@ -359,6 +407,10 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
         ));
     }
 
+    DOWNLOAD_TOTAL_BYTES.store(response.content_length().unwrap_or(0), Ordering::Release);
+    DOWNLOAD_BYTES.store(0, Ordering::Release);
+    FfmpegDownloadState::Downloading.store();
+
     let parent = dest.parent().ok_or("Invalid destination path")?;
     tokio::fs::create_dir_all(parent)
         .await
@@ -372,6 +424,7 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
         file.write_all(&chunk)
             .await
             .map_err(|e| format!("Failed to write download chunk: {}", e))?;
+        DOWNLOAD_BYTES.fetch_add(chunk.len() as u64, Ordering::AcqRel);
     }
     file.flush()
         .await
@@ -437,13 +490,13 @@ async fn download_and_install_ffmpeg() -> Result<String, String> {
 
     loop {
         let state = FfmpegDownloadState::current();
-        if state == FfmpegDownloadState::Downloading {
+        if state.is_active() {
             return Err("FFmpeg download already in progress".to_string());
         }
         if DOWNLOAD_STATE
             .compare_exchange(
                 state as u8,
-                FfmpegDownloadState::Downloading as u8,
+                FfmpegDownloadState::Preparing as u8,
                 Ordering::AcqRel,
                 Ordering::Acquire,
             )
@@ -452,6 +505,7 @@ async fn download_and_install_ffmpeg() -> Result<String, String> {
             break;
         }
     }
+    reset_download_progress();
     let _state_guard = DownloadStateGuard;
 
     // Use a known reliable Windows FFmpeg build (gyan.dev official mirror)
@@ -473,6 +527,7 @@ async fn download_and_install_ffmpeg() -> Result<String, String> {
                 .map_err(|e| format!("Failed to clear FFmpeg staging dir: {}", e))?;
         }
         download_file(FFMPEG_URL, &zip_path).await?;
+        FfmpegDownloadState::Extracting.store();
         let extract_zip_path = zip_path.clone();
         let extract_dir = staging_dir.clone();
         tokio::task::spawn_blocking(move || extract_zip(&extract_zip_path, &extract_dir))
@@ -483,6 +538,7 @@ async fn download_and_install_ffmpeg() -> Result<String, String> {
             return Err("FFmpeg executable missing after extraction".to_string());
         }
 
+        FfmpegDownloadState::Installing.store();
         if backup_dir.exists() {
             tokio::fs::remove_dir_all(&backup_dir)
                 .await
@@ -522,7 +578,7 @@ async fn download_and_install_ffmpeg() -> Result<String, String> {
         }
         Err(e) => {
             eprintln!("[ZkPlayer] FFmpeg install failed: {}", e);
-            FfmpegDownloadState::Failed.store();
+            fail_download(&e);
             Err(e)
         }
     }
@@ -533,22 +589,45 @@ pub struct FfmpegStatus {
     pub available: bool,
     pub path: String,
     pub downloading: bool,
+    pub phase: String,
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
+    pub error: String,
 }
 
 #[tauri::command]
 async fn get_ffmpeg_status() -> FfmpegStatus {
-    let downloading = FfmpegDownloadState::current() == FfmpegDownloadState::Downloading;
+    let state = FfmpegDownloadState::current();
+    let downloading = state.is_active();
+    let downloaded_bytes = DOWNLOAD_BYTES.load(Ordering::Acquire);
+    let total_bytes = DOWNLOAD_TOTAL_BYTES.load(Ordering::Acquire);
+    let error = download_error()
+        .read()
+        .unwrap_or_else(|lock_error| lock_error.into_inner())
+        .clone();
     if let Some(path) = get_ffmpeg() {
         return FfmpegStatus {
             available: true,
             path,
             downloading,
+            phase: if downloading {
+                state.as_str().to_string()
+            } else {
+                FfmpegDownloadState::Done.as_str().to_string()
+            },
+            downloaded_bytes,
+            total_bytes,
+            error,
         };
     }
     FfmpegStatus {
         available: false,
         path: String::new(),
         downloading,
+        phase: state.as_str().to_string(),
+        downloaded_bytes,
+        total_bytes,
+        error,
     }
 }
 

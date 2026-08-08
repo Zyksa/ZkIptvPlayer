@@ -49,10 +49,10 @@
             @click="playChannel(item)"
             class="glass-card p-4 rounded-lg cursor-pointer flex flex-col justify-between space-y-3 relative group border border-white/5 hover:border-brand-500/50 transition-all"
           >
-            <FavoriteButton
-              :media="channelPlayable(item)"
-              class="absolute top-2 right-2 z-10"
-            />
+            <div class="absolute top-2 right-2 z-30 flex gap-1.5">
+              <FavoriteButton :media="channelPlayable(item)" />
+              <CustomFolderButton :media="channelPlayable(item)" />
+            </div>
             <div class="flex items-start space-x-3 overflow-hidden">
               <div class="w-12 h-12 rounded-lg bg-obsidian-950 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center p-1.5">
                 <img
@@ -114,6 +114,7 @@
 
             <div class="flex items-center space-x-2">
               <FavoriteButton :media="channelPlayable(item)" />
+              <CustomFolderButton :media="channelPlayable(item)" />
               <button
                 type="button"
                 @click.prevent.stop="playChannel(item)"
@@ -141,6 +142,7 @@ import CatalogHeader from '@/components/CatalogHeader.vue'
 import FolderPanel from '@/components/FolderPanel.vue'
 import CatalogContent from '@/components/CatalogContent.vue'
 import FavoriteButton from '@/components/FavoriteButton.vue'
+import CustomFolderButton from '@/components/CustomFolderButton.vue'
 import { isSafeImageUrl } from '@/utils/url'
 
 const iptvStore = useIptvStore()

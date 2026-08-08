@@ -20,7 +20,7 @@ const WATCH_PROGRESS_THRESHOLD_SECONDS = 5
 const SEARCH_DEBOUNCE_MS = 250
 const GLOBAL_SEARCH_DEBOUNCE_MS = 300
 
-export type ViewType = 'home' | 'live' | 'movies' | 'series' | 'favorites' | 'settings' | 'search'
+export type ViewType = 'home' | 'live' | 'movies' | 'series' | 'favorites' | 'custom-folders' | 'settings' | 'search'
 export type SortOption = 'name_asc' | 'name_desc' | 'rating' | 'added' | 'id'
 export type ViewLayout = 'grid' | 'list'
 

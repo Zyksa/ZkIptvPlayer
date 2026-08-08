@@ -33,10 +33,10 @@
           type="button"
           @click="iptvStore.currentView = 'home'"
           :class="[
-            'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors',
+            'nav-tab w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium',
             iptvStore.currentView === 'home'
-              ? 'bg-brand-600 text-white font-semibold'
-              : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+              ? 'nav-tab--active text-white font-semibold'
+              : 'text-slate-400'
           ]"
         >
           <div class="flex items-center space-x-2.5">
@@ -49,10 +49,10 @@
           type="button"
           @click="iptvStore.currentView = 'live'"
           :class="[
-            'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors',
+            'nav-tab w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium',
             iptvStore.currentView === 'live'
-              ? 'bg-brand-600 text-white font-semibold'
-              : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+              ? 'nav-tab--active text-white font-semibold'
+              : 'text-slate-400'
           ]"
         >
           <div class="flex items-center space-x-2.5">
@@ -71,10 +71,10 @@
           type="button"
           @click="iptvStore.currentView = 'movies'"
           :class="[
-            'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors',
+            'nav-tab w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium',
             iptvStore.currentView === 'movies'
-              ? 'bg-brand-600 text-white font-semibold'
-              : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+              ? 'nav-tab--active text-white font-semibold'
+              : 'text-slate-400'
           ]"
         >
           <div class="flex items-center space-x-2.5">
@@ -93,10 +93,10 @@
           type="button"
           @click="iptvStore.currentView = 'series'"
           :class="[
-            'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors',
+            'nav-tab w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium',
             iptvStore.currentView === 'series'
-              ? 'bg-brand-600 text-white font-semibold'
-              : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+              ? 'nav-tab--active text-white font-semibold'
+              : 'text-slate-400'
           ]"
         >
           <div class="flex items-center space-x-2.5">
@@ -115,10 +115,10 @@
           type="button"
           @click="iptvStore.currentView = 'favorites'"
           :class="[
-            'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors',
+            'nav-tab w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium',
             iptvStore.currentView === 'favorites'
-              ? 'bg-brand-600 text-white font-semibold'
-              : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+              ? 'nav-tab--active text-white font-semibold'
+              : 'text-slate-400'
           ]"
         >
           <div class="flex items-center space-x-2.5">
@@ -135,12 +135,31 @@
 
         <button
           type="button"
+          @click="iptvStore.currentView = 'custom-folders'"
+          :class="[
+            'nav-tab w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium',
+            iptvStore.currentView === 'custom-folders'
+              ? 'nav-tab--active text-white font-semibold'
+              : 'text-slate-400'
+          ]"
+        >
+          <div class="flex items-center space-x-2.5">
+            <FolderHeart class="w-4 h-4" />
+            <span>Dossiers personnalisés</span>
+          </div>
+          <span v-if="folderStore.folders.length" class="text-[10px] px-1.5 py-0.2 rounded bg-black/40 text-slate-300 font-mono">
+            {{ folderStore.folders.length }}
+          </span>
+        </button>
+
+        <button
+          type="button"
           @click="iptvStore.currentView = 'settings'"
           :class="[
-            'w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors',
+            'nav-tab w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium',
             iptvStore.currentView === 'settings'
-              ? 'bg-brand-600 text-white font-semibold'
-              : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'
+              ? 'nav-tab--active text-white font-semibold'
+              : 'text-slate-400'
           ]"
         >
           <div class="flex items-center space-x-2.5">
@@ -181,11 +200,13 @@
 </template>
 
 <script setup lang="ts">
-import { Home, Tv, Film, Clapperboard, Heart, SlidersHorizontal, LogOut, RotateCw } from 'lucide-vue-next'
+import { Home, Tv, Film, Clapperboard, Heart, FolderHeart, SlidersHorizontal, LogOut, RotateCw } from 'lucide-vue-next'
 import { useIptvStore } from '@/stores/iptv'
 import { useAuthStore } from '@/stores/auth'
+import { useCustomFoldersStore } from '@/stores/custom-folders'
 import SearchInput from '@/components/SearchInput.vue'
 
 const iptvStore = useIptvStore()
 const authStore = useAuthStore()
+const folderStore = useCustomFoldersStore()
 </script>

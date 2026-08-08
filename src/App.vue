@@ -57,6 +57,7 @@ const MoviesView = defineAsyncComponent(() => import('@/components/MoviesView.vu
 const SeriesView = defineAsyncComponent(() => import('@/components/SeriesView.vue'))
 const SearchView = defineAsyncComponent(() => import('@/components/SearchView.vue'))
 const FavoritesView = defineAsyncComponent(() => import('@/components/FavoritesView.vue'))
+const CustomFoldersView = defineAsyncComponent(() => import('@/components/CustomFoldersView.vue'))
 const SettingsView = defineAsyncComponent(() => import('@/components/SettingsView.vue'))
 const VideoPlayer = defineAsyncComponent(() => import('@/components/VideoPlayer.vue'))
 
@@ -71,6 +72,7 @@ const activeViewComponent = computed(() => ({
   series: SeriesView,
   search: SearchView,
   favorites: FavoritesView,
+  'custom-folders': CustomFoldersView,
   settings: SettingsView,
 })[iptvStore.currentView])
 

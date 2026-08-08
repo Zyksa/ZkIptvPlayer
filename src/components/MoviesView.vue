@@ -72,10 +72,10 @@
                 <span>{{ Number(item.rating).toFixed(1) }}</span>
               </div>
 
-              <FavoriteButton
-                :media="moviePlayable(item)"
-                class="absolute top-1.5 left-1.5 z-10"
-              />
+              <div class="absolute top-1.5 left-1.5 z-30 flex gap-1.5">
+                <FavoriteButton :media="moviePlayable(item)" />
+                <CustomFolderButton :media="moviePlayable(item)" />
+              </div>
 
               <div v-if="loadingMovieId === item.stream_id" class="absolute inset-0 z-30 bg-black/65 backdrop-blur-sm flex items-center justify-center">
                 <LoadingSpinner compact label="Détails" />
@@ -135,6 +135,7 @@
             <div class="flex items-center space-x-2">
               <LoadingSpinner v-if="loadingMovieId === item.stream_id" compact />
               <FavoriteButton :media="moviePlayable(item)" />
+              <CustomFolderButton :media="moviePlayable(item)" />
               <button
                 type="button"
                 @click.prevent.stop="playMovie(item)"
@@ -197,6 +198,8 @@
                 <Play class="w-3.5 h-3.5 fill-current" />
                 <span>Lancer le Film</span>
               </button>
+              <FavoriteButton v-if="activeMovie" :media="moviePlayable(activeMovie)" />
+              <CustomFolderButton v-if="activeMovie" :media="moviePlayable(activeMovie)" labeled />
             </div>
           </div>
         </div>
@@ -218,6 +221,7 @@ import CatalogHeader from '@/components/CatalogHeader.vue'
 import FolderPanel from '@/components/FolderPanel.vue'
 import CatalogContent from '@/components/CatalogContent.vue'
 import FavoriteButton from '@/components/FavoriteButton.vue'
+import CustomFolderButton from '@/components/CustomFolderButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { isSafeImageUrl } from '@/utils/url'
 

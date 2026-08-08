@@ -1,5 +1,8 @@
 <template>
-  <div class="h-full flex flex-col p-6 gap-6 overflow-y-auto">
+  <div class="home-view h-full flex flex-col p-6 gap-6 overflow-y-auto">
+    <div class="home-particles" aria-hidden="true">
+      <i v-for="particle in 22" :key="particle"></i>
+    </div>
     <section class="home-hero rounded-2xl p-6 border border-white/10">
       <div class="relative z-10 flex flex-col gap-5">
         <div class="space-y-2">
@@ -56,10 +59,10 @@
           @click="resumeWatch(item)"
           class="glass-card p-3 rounded-lg cursor-pointer group space-y-2.5 relative"
         >
-          <FavoriteButton
-            :media="item.media"
-            class="absolute top-2 right-2 z-10"
-          />
+          <div class="absolute top-2 right-2 z-30 flex gap-1.5">
+            <FavoriteButton :media="item.media" />
+            <CustomFolderButton :media="item.media" />
+          </div>
           <div class="flex items-center space-x-3">
             <div class="w-10 h-14 rounded bg-obsidian-950 border border-white/10 overflow-hidden shrink-0">
               <img
@@ -95,7 +98,7 @@
         <span>Navigation Rapide</span>
       </h2>
 
-      <div class="stagger-grid grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="stagger-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
         <div
           @click="iptvStore.currentView = 'live'"
           class="glass-panel hover-lift p-5 rounded-lg cursor-pointer group hover:border-brand-500/50 transition-all space-y-2"
@@ -143,6 +146,38 @@
             <p class="text-xs text-slate-400 mt-1">Retrouver vos séries.</p>
           </div>
         </div>
+
+        <div
+          @click="iptvStore.currentView = 'favorites'"
+          class="glass-panel hover-lift p-5 rounded-lg cursor-pointer group hover:border-rose-400/40 transition-all space-y-2"
+        >
+          <div class="w-9 h-9 rounded bg-rose-500/15 text-rose-300 border border-rose-500/25 flex items-center justify-center">
+            <Heart class="w-5 h-5" />
+          </div>
+          <div>
+            <h3 class="content-title text-sm font-bold text-slate-100 flex items-center justify-between">
+              <span>Favoris</span>
+              <ChevronRight class="w-4 h-4 text-slate-500 group-hover:translate-x-1 transition-transform" />
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Vos contenus préférés.</p>
+          </div>
+        </div>
+
+        <div
+          @click="iptvStore.currentView = 'custom-folders'"
+          class="glass-panel hover-lift p-5 rounded-lg cursor-pointer group hover:border-violet-400/40 transition-all space-y-2"
+        >
+          <div class="w-9 h-9 rounded bg-violet-500/15 text-violet-300 border border-violet-500/25 flex items-center justify-center">
+            <FolderHeart class="w-5 h-5" />
+          </div>
+          <div>
+            <h3 class="content-title text-sm font-bold text-slate-100 flex items-center justify-between">
+              <span>Dossiers</span>
+              <ChevronRight class="w-4 h-4 text-slate-500 group-hover:translate-x-1 transition-transform" />
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Vos collections personnelles.</p>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -164,7 +199,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Tv, Film, Clapperboard, PlayCircle, ChevronRight, Compass } from 'lucide-vue-next'
+import { Tv, Film, Clapperboard, PlayCircle, ChevronRight, Compass, Heart, FolderHeart } from 'lucide-vue-next'
 import packageJson from '../../package.json'
 import type { ContinueWatchingItem } from '@/types/iptv'
 import { useIptvStore } from '@/stores/iptv'
@@ -172,6 +207,7 @@ import { usePlayerStore } from '@/stores/player'
 import { openExternalUrl } from '@/services/tauri'
 import { isSafeImageUrl } from '@/utils/url'
 import FavoriteButton from '@/components/FavoriteButton.vue'
+import CustomFolderButton from '@/components/CustomFolderButton.vue'
 
 const iptvStore = useIptvStore()
 const playerStore = usePlayerStore()

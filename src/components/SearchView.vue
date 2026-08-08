@@ -61,10 +61,10 @@
           @click="playChannel(channel)"
           class="glass-card p-3 rounded-lg cursor-pointer flex flex-col justify-between space-y-2 group border border-white/5 hover:border-brand-500/50 transition-all relative"
         >
-          <FavoriteButton
-            :media="channelPlayable(channel)"
-            class="absolute top-2 right-2 z-10"
-          />
+          <div class="absolute top-2 right-2 z-30 flex gap-1.5">
+            <FavoriteButton :media="channelPlayable(channel)" />
+            <CustomFolderButton :media="channelPlayable(channel)" />
+          </div>
           <div class="flex items-start space-x-2 overflow-hidden">
             <div class="w-10 h-10 rounded-lg bg-obsidian-950 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center p-1">
               <img
@@ -144,10 +144,10 @@
               <span>{{ Number(movie.rating).toFixed(1) }}</span>
             </div>
 
-            <FavoriteButton
-              :media="moviePlayable(movie)"
-              class="absolute top-1.5 left-1.5 z-10"
-            />
+            <div class="absolute top-1.5 left-1.5 z-30 flex gap-1.5">
+              <FavoriteButton :media="moviePlayable(movie)" />
+              <CustomFolderButton :media="moviePlayable(movie)" />
+            </div>
 
             <div v-if="loadingMovieId === movie.stream_id" class="absolute inset-0 z-30 bg-black/65 backdrop-blur-sm flex items-center justify-center">
               <LoadingSpinner compact label="Ouverture" />
@@ -216,10 +216,10 @@
               <span>{{ Number(series.rating).toFixed(1) }}</span>
             </div>
 
-            <FavoriteButton
-              :media="seriesFavorite(series)"
-              class="absolute top-1.5 left-1.5 z-10"
-            />
+            <div class="absolute top-1.5 left-1.5 z-30 flex gap-1.5">
+              <FavoriteButton :media="seriesFavorite(series)" />
+              <CustomFolderButton :media="seriesFavorite(series)" />
+            </div>
 
             <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <div class="w-10 h-10 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-lg">
@@ -252,6 +252,7 @@ import { usePlayerStore } from '@/stores/player'
 import { XtreamService } from '@/services/xtream'
 import { isSafeImageUrl } from '@/utils/url'
 import FavoriteButton from '@/components/FavoriteButton.vue'
+import CustomFolderButton from '@/components/CustomFolderButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const iptvStore = useIptvStore()

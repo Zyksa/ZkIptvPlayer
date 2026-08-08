@@ -5206,7 +5206,7 @@ dependencies = [
 
 [[package]]
 name = "zkplayer-desktop"
-version = "1.1.0"
+version = "1.1.1"
 dependencies = [
  "dirs 6.0.0",
  "reqwest 0.12.28",

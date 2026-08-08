@@ -72,10 +72,10 @@
                 <span>{{ Number(item.rating).toFixed(1) }}</span>
               </div>
 
-              <FavoriteButton
-                :media="seriesFavorite(item)"
-                class="absolute top-1.5 left-1.5 z-10"
-              />
+              <div class="absolute top-1.5 left-1.5 z-30 flex gap-1.5">
+                <FavoriteButton :media="seriesFavorite(item)" />
+                <CustomFolderButton :media="seriesFavorite(item)" />
+              </div>
 
               <div v-if="loadingSeriesId === item.series_id" class="absolute inset-0 z-30 bg-black/65 backdrop-blur-sm flex items-center justify-center">
                 <LoadingSpinner compact label="Saisons" />
@@ -127,6 +127,7 @@
             <div class="flex items-center space-x-2">
               <LoadingSpinner v-if="loadingSeriesId === item.series_id" compact />
               <FavoriteButton :media="seriesFavorite(item)" />
+              <CustomFolderButton :media="seriesFavorite(item)" />
               <button
                 type="button"
                 @click.prevent.stop="openSeriesDetail(item)"
@@ -166,11 +167,15 @@
               @error="onImgError"
             />
           </div>
-          <div class="space-y-1">
+          <div class="space-y-2">
             <h2 class="text-base font-bold text-slate-100">{{ activeSeries?.name }}</h2>
             <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed">
               {{ selectedSeriesDetail.info?.plot || 'Sélectionnez un épisode ci-dessous pour lancer la lecture.' }}
             </p>
+            <div v-if="activeSeries" class="flex items-center gap-2 pt-1">
+              <FavoriteButton :media="seriesFavorite(activeSeries)" />
+              <CustomFolderButton :media="seriesFavorite(activeSeries)" labeled />
+            </div>
           </div>
         </div>
 
@@ -236,6 +241,7 @@ import CatalogHeader from '@/components/CatalogHeader.vue'
 import FolderPanel from '@/components/FolderPanel.vue'
 import CatalogContent from '@/components/CatalogContent.vue'
 import FavoriteButton from '@/components/FavoriteButton.vue'
+import CustomFolderButton from '@/components/CustomFolderButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { isSafeImageUrl } from '@/utils/url'
 
