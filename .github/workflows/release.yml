@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate frontend
+        run: npm run check
+
+      - name: Validate Rust
+        working-directory: src-tauri
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test --all-targets
+
+      - name: Build Tauri bundles
+        run: npm run build:tauri:signed
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Generate latest.json
+        run: node scripts/generate-latest-json.mjs
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          $tag = "v$version"
+          $nsis = "src-tauri/target/release/bundle/nsis"
+          $msi = "src-tauri/target/release/bundle/msi"
+          $exe = Join-Path $nsis "ZkPlayer Desktop_${version}_x64-setup.exe"
+          $sig = Join-Path $nsis "ZkPlayer Desktop_${version}_x64-setup.exe.sig"
+          $msiFile = Join-Path $msi "ZkPlayer Desktop_${version}_x64_en-US.msi"
+          $msiSig = Join-Path $msi "ZkPlayer Desktop_${version}_x64_en-US.msi.sig"
+          $latest = Join-Path $nsis "latest.json"
+
+          # If release already exists (e.g. tag pushed manually), upload assets to it
+          $existing = gh release view $tag 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists. Uploading/overwriting assets..."
+            gh release upload $tag "$exe" "$sig" "$msiFile" "$msiSig" "$latest" --clobber
+          } else {
+            gh release create $tag `
+              --title "ZkPlayer Desktop $tag" `
+              --notes "Version $version" `
+              "$exe" "$sig" "$msiFile" "$msiSig" "$latest"
+          }

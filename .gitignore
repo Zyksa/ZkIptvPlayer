@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/WixTools/
+*.log
+
+# Vite / Vue
+.vite/
+*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editors
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Test coverage
+coverage/
+
+# Tauri signing keys (private)
+*.pem
+*.key
+src-tauri/*.key
+src-tauri/*.pem
+
+# Bundle artifacts (optionally keep for CI, but ignore locally)
+src-tauri/target/release/bundle/
+
+# FFmpeg binary is downloaded at runtime, not committed
+src-tauri/resources/ffmpeg.exe
+src-tauri/resources/
+*.zip
