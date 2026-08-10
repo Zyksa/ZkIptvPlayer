@@ -14,10 +14,10 @@
           type="button"
           @click="iptvStore.refreshContent()"
           :disabled="iptvStore.isLoadingData"
-          class="w-full flex items-center justify-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 transition-colors disabled:opacity-50"
+          class="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-xl text-xs font-medium bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 active:scale-[0.97] disabled:opacity-50"
           title="Mettre à jour le catalogue depuis le serveur IPTV"
         >
-          <RotateCw :class="['w-3.5 h-3.5 text-brand-accent', iptvStore.isLoadingData ? 'animate-spin' : '']" />
+          <RotateCw :class="['w-3.5 h-3.5 text-brand-accent transition-transform', iptvStore.isLoadingData ? 'animate-spin' : '']" />
           <span>{{ iptvStore.isLoadingData ? 'Actualisation...' : 'Actualiser le catalogue' }}</span>
         </button>
       </div>

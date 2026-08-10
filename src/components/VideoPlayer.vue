@@ -55,8 +55,8 @@
       </div>
 
       <!-- Center Play/Pause Indicator -->
-      <div v-if="showCenterPlayIcon" class="absolute inset-0 flex items-center justify-center pointer-events-none animate-fade-in">
-        <div class="w-20 h-20 rounded-full bg-black/60 backdrop-blur border border-white/20 flex items-center justify-center text-white">
+      <div v-if="showCenterPlayIcon" class="absolute inset-0 flex items-center justify-center pointer-events-none play-pause-pop">
+        <div class="w-20 h-20 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-2xl shadow-black/80">
           <Play v-if="!playerStore.isPlaying" class="w-10 h-10 ml-1" />
           <Pause v-else class="w-10 h-10" />
         </div>
@@ -66,8 +66,8 @@
     <!-- Top Floating Header Overlay -->
     <div
       :class="[
-        'absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 via-black/40 to-transparent flex items-center justify-between transition-opacity duration-300 z-10',
-        showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        'absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/90 via-black/40 to-transparent flex items-center justify-between z-10',
+        showControls ? 'opacity-100 transition-opacity duration-150 ease-out' : 'opacity-0 pointer-events-none transition-opacity duration-400 ease-in'
       ]"
     >
       <div class="flex items-center space-x-4">
