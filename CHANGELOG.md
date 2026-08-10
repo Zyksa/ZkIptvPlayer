@@ -2,6 +2,13 @@
 
 Toutes les évolutions importantes de ZkPlayer Desktop sont répertoriées ici.
 
+## [1.1.3] - 2026-08-10
+
+### Maintenance
+
+- Nettoyage des fichiers distribués avec le projet.
+- Aucun changement pour vos contenus et vos réglages.
+
 ## [1.1.2] - 2026-08-10
 
 ### Nouveautés & Améliorations UI/UX
