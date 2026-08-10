@@ -38,9 +38,9 @@ await writeFile(cargoTomlPath, cargoToml)
 // 5. Mettre à jour Cargo.lock via cargo.
 run('cargo update -p zkplayer-desktop', { cwd: resolve(root, 'src-tauri') })
 
-// 6. Commit. Le [skip ci] évite une boucle infinie.
-run('git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock')
-run(`git commit -m "chore(release): bump version to ${newVersion} [skip ci]"`)
+// 6. Commit.
+run('git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock CHANGELOG.md')
+run(`git commit -m "chore(release): bump version to ${newVersion}"`)
 
 // 7. Push commit. Si le remote est en avance, on pull --rebase puis on repush.
 try {

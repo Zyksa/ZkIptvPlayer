@@ -2,6 +2,18 @@
 
 Toutes les évolutions importantes de ZkPlayer Desktop sont répertoriées ici.
 
+## [1.1.2] - 2026-08-10
+
+### Nouveautés & Améliorations UI/UX
+
+- Refonte complète de l'UI/UX et du Motion Design selon la philosophie Craft d'Emil Kowalski.
+- Intégration de tokens de mouvement 60fps sur-mesure (`--ease-out-expo`, `--ease-out-quint`, `--ease-spring`).
+- Réactivité tactile globale sur les boutons et cartes avec micro-enfoncement au clic (`scale(0.96)`).
+- Pilule glissante animée sous les onglets de connexion (API Xtream Codes vs Lien M3U) avec transition de vue fluide.
+- Animation Heart Burst (`heart-pop`) lors de la bascule d'un média en favori.
+- Pop central dynamique (`play-pause-pop`) sur l'indicateur Play/Pause du lecteur vidéo et fondu d'overlay asymétrique.
+- Animation d'extension sur la barre de recherche et le bouton d'effacement.
+
 ## [1.1.1] - 2026-08-08
 
 ### Nouveautés
