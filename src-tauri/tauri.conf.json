@@ -33,7 +33,9 @@
     "active": true,
     "targets": [
       "nsis",
-      "msi"
+      "msi",
+      "appimage",
+      "deb"
     ],
     "resources": [],
     "icon": [

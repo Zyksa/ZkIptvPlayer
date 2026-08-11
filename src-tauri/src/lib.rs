@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
+#[cfg(windows)]
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -17,6 +18,13 @@ use tokio::sync::mpsc;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
+/// Appends the platform executable suffix (`.exe` on Windows, none elsewhere)
+/// so FFmpeg/FFprobe filename literals don't need per-OS duplication.
+fn exe_name(base: &str) -> String {
+    format!("{base}{}", std::env::consts::EXE_SUFFIX)
+}
+
+#[cfg_attr(not(windows), allow(unused_mut))]
 fn hidden_command<S: AsRef<OsStr>>(program: S) -> std::process::Command {
     let mut command = std::process::Command::new(program);
     #[cfg(windows)]
@@ -27,6 +35,7 @@ fn hidden_command<S: AsRef<OsStr>>(program: S) -> std::process::Command {
     command
 }
 
+#[cfg_attr(not(windows), allow(unused_mut))]
 fn hidden_async_command<S: AsRef<OsStr>>(program: S) -> AsyncCommand {
     let mut command = AsyncCommand::new(program);
     #[cfg(windows)]
@@ -251,7 +260,7 @@ fn detect_ffmpeg() -> Option<String> {
     if let Some(download_dir) = downloaded_ffmpeg_dir() {
         let downloaded_exe = find_ffmpeg_in_dir(&download_dir).unwrap_or_else(|| {
             download_dir
-                .join("ffmpeg.exe")
+                .join(exe_name("ffmpeg"))
                 .to_string_lossy()
                 .to_string()
         });
@@ -285,12 +294,12 @@ fn detect_ffmpeg() -> Option<String> {
     // 3. Check bundled resource path (next to the executable) — legacy fallback
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
-            let bundled = exe_dir.join("resources").join("ffmpeg.exe");
+            let bundled = exe_dir.join("resources").join(exe_name("ffmpeg"));
             if bundled.exists() {
                 eprintln!("[ZkPlayer] FFmpeg found bundled: {}", bundled.display());
                 return Some(bundled.to_string_lossy().to_string());
             }
-            let bundled_flat = exe_dir.join("ffmpeg.exe");
+            let bundled_flat = exe_dir.join(exe_name("ffmpeg"));
             if bundled_flat.exists() {
                 eprintln!(
                     "[ZkPlayer] FFmpeg found next to exe: {}",
@@ -302,18 +311,36 @@ fn detect_ffmpeg() -> Option<String> {
     }
 
     // 4. Check well-known Windows paths
-    let known_paths = [
-        "C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe",
-        "C:\\ffmpeg\\bin\\ffmpeg.exe",
-    ];
-    for p in &known_paths {
-        if Path::new(p).exists() {
-            eprintln!("[ZkPlayer] FFmpeg found at: {}", p);
-            return Some(p.to_string());
+    #[cfg(windows)]
+    {
+        let known_paths = [
+            "C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe",
+            "C:\\ffmpeg\\bin\\ffmpeg.exe",
+        ];
+        for p in &known_paths {
+            if Path::new(p).exists() {
+                eprintln!("[ZkPlayer] FFmpeg found at: {}", p);
+                return Some(p.to_string());
+            }
+        }
+    }
+
+    // 4 (Linux). Check well-known package-manager install locations — mostly
+    // redundant with the PATH check above, but cheap and mirrors the Windows
+    // known-paths fallback in case ffmpeg isn't on PATH for this process.
+    #[cfg(target_os = "linux")]
+    {
+        let known_paths = ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+        for p in &known_paths {
+            if Path::new(p).exists() {
+                eprintln!("[ZkPlayer] FFmpeg found at: {}", p);
+                return Some(p.to_string());
+            }
         }
     }
 
     // 5. Scan WinGet packages directory
+    #[cfg(windows)]
     if let Ok(user_profile) = std::env::var("USERPROFILE") {
         let winget_dir = format!(
             "{}\\AppData\\Local\\Microsoft\\WinGet\\Packages",
@@ -338,11 +365,11 @@ fn detect_ffmpeg() -> Option<String> {
 }
 
 fn find_ffmpeg_in_dir(dir: &Path) -> Option<String> {
-    let direct = dir.join("ffmpeg.exe");
+    let direct = dir.join(exe_name("ffmpeg"));
     if direct.exists() {
         return Some(direct.to_string_lossy().to_string());
     }
-    let in_bin = dir.join("bin").join("ffmpeg.exe");
+    let in_bin = dir.join("bin").join(exe_name("ffmpeg"));
     if in_bin.exists() {
         return Some(in_bin.to_string_lossy().to_string());
     }
@@ -350,11 +377,11 @@ fn find_ffmpeg_in_dir(dir: &Path) -> Option<String> {
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
             if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                let sub = entry.path().join("bin").join("ffmpeg.exe");
+                let sub = entry.path().join("bin").join(exe_name("ffmpeg"));
                 if sub.exists() {
                     return Some(sub.to_string_lossy().to_string());
                 }
-                let sub_direct = entry.path().join("ffmpeg.exe");
+                let sub_direct = entry.path().join(exe_name("ffmpeg"));
                 if sub_direct.exists() {
                     return Some(sub_direct.to_string_lossy().to_string());
                 }
@@ -437,6 +464,7 @@ async fn download_file(url: &str, dest: &Path) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(windows)]
 fn extract_zip(zip_path: &Path, out_dir: &Path) -> Result<(), String> {
     fs::create_dir_all(out_dir).map_err(|e| format!("Failed to create extract dir: {}", e))?;
     let file = fs::File::open(zip_path).map_err(|e| format!("Failed to open zip: {}", e))?;
@@ -475,8 +503,53 @@ fn extract_zip(zip_path: &Path, out_dir: &Path) -> Result<(), String> {
 
     fs::remove_file(zip_path).map_err(|e| format!("Failed to remove zip: {}", e))?;
 
-    if !out_dir.join("ffmpeg.exe").exists() {
+    if !out_dir.join(exe_name("ffmpeg")).exists() {
         return Err("FFmpeg.exe was not found in the downloaded archive".to_string());
+    }
+
+    Ok(())
+}
+
+/// Extracts `ffmpeg`/`ffprobe` from a John Van Sickle static-build tarball
+/// (`ffmpeg-*-static/{ffmpeg,ffprobe}`) into `out_dir`, mirroring the
+/// "only pull the two binaries we need" behavior of `extract_zip`.
+#[cfg(target_os = "linux")]
+fn extract_tar_xz(archive_path: &Path, out_dir: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::create_dir_all(out_dir).map_err(|e| format!("Failed to create extract dir: {}", e))?;
+    let file =
+        fs::File::open(archive_path).map_err(|e| format!("Failed to open archive: {}", e))?;
+    let decoder = xz2::read::XzDecoder::new(file);
+    let mut archive = tar::Archive::new(decoder);
+
+    for entry in archive
+        .entries()
+        .map_err(|e| format!("Failed to read tar archive: {}", e))?
+    {
+        let mut entry = entry.map_err(|e| format!("Failed to read tar entry: {}", e))?;
+        let path = entry
+            .path()
+            .map_err(|e| format!("Invalid tar entry path: {}", e))?
+            .to_path_buf();
+        let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if file_name != "ffmpeg" && file_name != "ffprobe" {
+            continue;
+        }
+        let out_path = out_dir.join(file_name);
+        entry
+            .unpack(&out_path)
+            .map_err(|e| format!("Failed to extract {}: {}", file_name, e))?;
+        fs::set_permissions(&out_path, fs::Permissions::from_mode(0o755))
+            .map_err(|e| format!("Failed to mark {} executable: {}", file_name, e))?;
+    }
+
+    fs::remove_file(archive_path).map_err(|e| format!("Failed to remove archive: {}", e))?;
+
+    if !out_dir.join("ffmpeg").exists() {
+        return Err("ffmpeg was not found in the downloaded archive".to_string());
     }
 
     Ok(())
@@ -508,8 +581,16 @@ async fn download_and_install_ffmpeg() -> Result<String, String> {
     reset_download_progress();
     let _state_guard = DownloadStateGuard;
 
-    // Use a known reliable Windows FFmpeg build (gyan.dev official mirror)
+    // Use a known reliable, stable-URL static FFmpeg build per platform.
+    #[cfg(windows)]
     const FFMPEG_URL: &str = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
+    #[cfg(target_os = "linux")]
+    const FFMPEG_URL: &str =
+        "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
+    #[cfg(windows)]
+    const ARCHIVE_NAME: &str = "ffmpeg.zip";
+    #[cfg(target_os = "linux")]
+    const ARCHIVE_NAME: &str = "ffmpeg.tar.xz";
 
     let result: Result<String, String> = async {
         let download_dir =
@@ -519,20 +600,29 @@ async fn download_and_install_ffmpeg() -> Result<String, String> {
             .ok_or("Could not determine FFmpeg install parent")?;
         let staging_dir = install_root.join("ffmpeg.installing");
         let backup_dir = install_root.join("ffmpeg.backup");
-        let zip_path = staging_dir.join("ffmpeg.zip");
+        let archive_path = staging_dir.join(ARCHIVE_NAME);
 
         if staging_dir.exists() {
             tokio::fs::remove_dir_all(&staging_dir)
                 .await
                 .map_err(|e| format!("Failed to clear FFmpeg staging dir: {}", e))?;
         }
-        download_file(FFMPEG_URL, &zip_path).await?;
+        download_file(FFMPEG_URL, &archive_path).await?;
         FfmpegDownloadState::Extracting.store();
-        let extract_zip_path = zip_path.clone();
+        let extract_archive_path = archive_path.clone();
         let extract_dir = staging_dir.clone();
-        tokio::task::spawn_blocking(move || extract_zip(&extract_zip_path, &extract_dir))
-            .await
-            .map_err(|e| format!("FFmpeg extraction task failed: {}", e))??;
+        tokio::task::spawn_blocking(move || {
+            #[cfg(windows)]
+            {
+                extract_zip(&extract_archive_path, &extract_dir)
+            }
+            #[cfg(target_os = "linux")]
+            {
+                extract_tar_xz(&extract_archive_path, &extract_dir)
+            }
+        })
+        .await
+        .map_err(|e| format!("FFmpeg extraction task failed: {}", e))??;
 
         if find_ffmpeg_in_dir(&staging_dir).is_none() {
             return Err("FFmpeg executable missing after extraction".to_string());
@@ -561,7 +651,7 @@ async fn download_and_install_ffmpeg() -> Result<String, String> {
 
         let exe = find_ffmpeg_in_dir(&download_dir).unwrap_or_else(|| {
             download_dir
-                .join("ffmpeg.exe")
+                .join(exe_name("ffmpeg"))
                 .to_string_lossy()
                 .to_string()
         });
@@ -722,9 +812,20 @@ fn open_external_url(url: String) -> Result<(), String> {
         Ok(())
     }
 
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
     {
-        Err("L'ouverture externe est uniquement disponible sous Windows".to_string())
+        hidden_command("xdg-open")
+            .arg(parsed.as_str())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|error| format!("Impossible d'ouvrir le navigateur: {error}"))?;
+        Ok(())
+    }
+
+    #[cfg(not(any(windows, target_os = "linux")))]
+    {
+        Err("L'ouverture externe n'est pas disponible sur cette plateforme".to_string())
     }
 }
 
@@ -756,7 +857,7 @@ fn get_ffprobe() -> Option<String> {
         }
         let ffmpeg_path = std::path::PathBuf::from(&ffmpeg);
         if let Some(parent) = ffmpeg_path.parent() {
-            let ffprobe_path = parent.join("ffprobe.exe");
+            let ffprobe_path = parent.join(exe_name("ffprobe"));
             if ffprobe_path.exists() {
                 return Some(ffprobe_path.to_string_lossy().to_string());
             }
@@ -833,15 +934,19 @@ async fn get_transcode_duration(url: String) -> f64 {
 fn open_in_external_player(url: String) -> Result<(), String> {
     let raw_target = unwrap_proxy_target(url);
 
-    let possible_vlc_paths = [
-        "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
-        "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
-    ];
+    #[cfg(windows)]
+    {
+        let possible_vlc_paths = [
+            "C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
+            "C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
+        ];
 
-    for vlc_path in &possible_vlc_paths {
-        if Path::new(vlc_path).exists() && hidden_command(vlc_path).arg(&raw_target).spawn().is_ok()
-        {
-            return Ok(());
+        for vlc_path in &possible_vlc_paths {
+            if Path::new(vlc_path).exists()
+                && hidden_command(vlc_path).arg(&raw_target).spawn().is_ok()
+            {
+                return Ok(());
+            }
         }
     }
 
@@ -849,11 +954,26 @@ fn open_in_external_player(url: String) -> Result<(), String> {
         return Ok(());
     }
 
-    hidden_command("cmd")
-        .args(["/C", "start", "", &raw_target])
-        .spawn()
-        .map_err(|e| e.to_string())?;
-    Ok(())
+    #[cfg(windows)]
+    {
+        hidden_command("cmd")
+            .args(["/C", "start", "", &raw_target])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        hidden_command("xdg-open")
+            .arg(&raw_target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(not(any(windows, target_os = "linux")))]
+    Err("Aucun lecteur externe disponible sur cette plateforme".to_string())
 }
 
 #[tauri::command]
