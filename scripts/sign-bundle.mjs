@@ -11,6 +11,8 @@ const bundleDir = resolve(root, 'src-tauri/target/release/bundle')
 const bundles = [
   join(bundleDir, 'nsis', `${productName}_${version}_x64-setup.exe`),
   join(bundleDir, 'msi', `${productName}_${version}_x64_en-US.msi`),
+  // deb isn't consumed by the updater, so only the AppImage needs a signature.
+  join(bundleDir, 'appimage', `${productName}_${version}_amd64.AppImage`),
 ]
 
 const password = process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD ?? ''
