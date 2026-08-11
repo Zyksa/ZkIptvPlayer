@@ -46,7 +46,38 @@ Regardez la **TV en direct**, les **films** et les **séries** depuis vos playli
 
 - [Node.js](https://nodejs.org/) ≥ 18
 - [Rust](https://www.rust-lang.org/tools/install)
-- Windows 10/11
+- Windows 10/11 **ou** Linux (AppImage/deb)
+
+**Sous Linux**, en plus des dépendances système de Tauri, installez :
+
+```bash
+# Arch
+sudo pacman -S --needed webkit2gtk-4.1 gtk3 libappindicator-gtk3 librsvg base-devel \
+  gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+
+# Debian/Ubuntu
+sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+  librsvg2-dev build-essential \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-ugly gstreamer1.0-libav
+```
+
+Le GStreamer complet (`gst-plugins-*` + `gst-libav`) est requis par WebKitGTK pour
+décoder l'audio/vidéo dans la fenêtre de l'app — sans lui, la lecture échoue
+silencieusement ou affiche `autoaudiosink not found`.
+
+Si vous utilisez le bouton **« Ouvrir dans un lecteur externe »** avec VLC, votre
+VLC doit aussi avoir ses plugins de décodage installés (sur certaines distros
+comme Arch, VLC les sépare en paquets optionnels) :
+
+```bash
+# Arch — décodeurs HEVC/DTS/AC-3 manquants par défaut
+sudo pacman -S --needed vlc-plugin-ffmpeg vlc-plugin-dca
+```
+
+Sans ça, VLC affichera des erreurs « Codec non pris en charge » pour HEVC, DTS
+ou AC-3. Ceci n'affecte pas la lecture intégrée à l'app, qui passe par le proxy
+FFmpeg local et transcode déjà ces codecs.
 
 ### Étapes
 
