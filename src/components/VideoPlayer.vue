@@ -382,6 +382,7 @@ const resumingNotice = ref<number | null>(null)
 const isScrubbing = ref(false)
 const scrubTime = ref(0)
 let ffmpegSeekOffset = 0
+let seekDuckTimeout: ReturnType<typeof setTimeout> | null = null
 
 let hideControlsTimeout: ReturnType<typeof setTimeout> | null = null
 let centerIconTimeout: ReturnType<typeof setTimeout> | null = null
@@ -747,6 +748,22 @@ const onTimeUpdate = () => {
   }
 }
 
+// Restarting FFmpeg (fresh decoder/encoder/resampler) at a seek point can emit
+// a brief audio glitch. Muting the element for this window (independent of the
+// WebAudio gain node, so it works whether or not the audio boost is on) hides
+// it instead of feeding it into the output.
+const SEEK_DUCK_MS = 250
+
+const duckAudioForSeek = () => {
+  if (!videoRef.value) return
+  if (seekDuckTimeout) clearTimeout(seekDuckTimeout)
+  videoRef.value.muted = true
+  seekDuckTimeout = setTimeout(() => {
+    seekDuckTimeout = null
+    if (videoRef.value) videoRef.value.muted = playerStore.isMuted
+  }, SEEK_DUCK_MS)
+}
+
 /**
  * Unified seek handler for FFmpeg-transcoded streams.
  * Reloads the source with &seek=N so FFmpeg restarts at the requested timestamp.
@@ -776,6 +793,7 @@ const ffmpegSeek = async (targetTime: number) => {
   if (proxiedUrl.includes('/transcode?')) {
     let seekUrl = proxiedUrl + '&seek=' + clamped.toFixed(1)
     if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
+    duckAudioForSeek()
     videoRef.value.src = seekUrl
     videoRef.value.play().catch(() => {})
   } else {
@@ -791,31 +809,11 @@ const onSeekInput = (e: Event) => {
 const onSeekChange = async (e: Event) => {
   const targetTime = parseFloat((e.target as HTMLInputElement).value)
   isScrubbing.value = false
-
-  if (!videoRef.value || !playerStore.currentMedia) return
-
-  const rawUrl = playerStore.currentMedia.streamUrl
-
-  // For HLS (.m3u8), native seek works fine
-  if (rawUrl.toLowerCase().includes('.m3u8')) {
-    playerStore.seekTo(targetTime)
-    return
-  }
-
-  // For FFmpeg-transcoded streams: reload source with &seek=N parameter
-  // FFmpeg will use -ss to start at the requested position
-  playerStore.currentTime = targetTime
-  const isLiveSeek = playerStore.currentMedia.type === 'live'
-  const proxiedUrl = await getProxyStreamUrl(rawUrl, isLiveSeek)
-  if (proxiedUrl.includes('/transcode?')) {
-    let seekUrl = proxiedUrl + '&seek=' + targetTime.toFixed(1)
-    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null }
-    videoRef.value.src = seekUrl
-    videoRef.value.play().catch(() => {})
-  } else {
-    // Direct proxy: try native seek
-    videoRef.value.currentTime = targetTime
-  }
+  // Delegates to ffmpegSeek so the scrub bar updates ffmpegSeekOffset like
+  // every other seek path — skipping it left onTimeUpdate adding the fresh
+  // stream's near-zero currentTime to a stale offset, resetting the
+  // displayed timer to ~0:01 after a drag even though FFmpeg seeked correctly.
+  await ffmpegSeek(targetTime)
 }
 
 const onVolumeInput = (e: Event) => {
@@ -950,6 +948,7 @@ onUnmounted(() => {
   sourceGeneration++
   if (hideControlsTimeout) clearTimeout(hideControlsTimeout)
   if (centerIconTimeout) clearTimeout(centerIconTimeout)
+  if (seekDuckTimeout) clearTimeout(seekDuckTimeout)
   if (hlsInstance) {
     hlsInstance.destroy()
   }
