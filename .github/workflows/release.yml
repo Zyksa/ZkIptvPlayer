@@ -10,8 +10,12 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: windows-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,6 +31,17 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            build-essential
 
       - name: Configure Git
         run: |
@@ -55,49 +70,83 @@ jobs:
       - name: Generate latest.json
         run: node scripts/generate-latest-json.mjs
 
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.os }}
+          path: src-tauri/target/release/bundle
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-windows-latest
+          path: artifacts/windows
+
+      - name: Download Linux bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-ubuntu-latest
+          path: artifacts/linux
+
+      - name: Merge latest.json
+        run: |
+          node scripts/merge-latest-json.mjs \
+            artifacts/latest.json \
+            artifacts/windows/nsis/latest.json \
+            artifacts/linux/appimage/latest.json
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REF_TYPE: ${{ github.ref_type }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
-        shell: pwsh
         run: |
-          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
-          $tag = "v$version"
+          set -euo pipefail
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          tag="v$version"
 
-          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne $tag) {
-            throw "Le tag $env:GITHUB_REF_NAME ne correspond pas à la version $version."
-          }
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "$tag" ]; then
+            echo "Le tag $GITHUB_REF_NAME ne correspond pas à la version $version." >&2
+            exit 1
+          fi
 
-          $nsis = "src-tauri/target/release/bundle/nsis"
-          $msi = "src-tauri/target/release/bundle/msi"
-          $exe = Join-Path $nsis "ZkPlayer Desktop_${version}_x64-setup.exe"
-          $sig = "$exe.sig"
-          $msiFile = Join-Path $msi "ZkPlayer Desktop_${version}_x64_en-US.msi"
-          $msiSig = "$msiFile.sig"
-          $latest = Join-Path $nsis "latest.json"
-          $notes = Join-Path $nsis "release-notes.md"
+          exe="artifacts/windows/nsis/ZkPlayer Desktop_${version}_x64-setup.exe"
+          sig="$exe.sig"
+          msi="artifacts/windows/msi/ZkPlayer Desktop_${version}_x64_en-US.msi"
+          msi_sig="$msi.sig"
+          appimage="artifacts/linux/appimage/ZkPlayer Desktop_${version}_amd64.AppImage"
+          appimage_sig="$appimage.sig"
+          deb="artifacts/linux/deb/ZkPlayer Desktop_${version}_amd64.deb"
+          notes="artifacts/windows/nsis/release-notes.md"
+          latest="artifacts/latest.json"
 
-          @($exe, $sig, $msiFile, $msiSig, $latest, $notes) | ForEach-Object {
-            if (-not (Test-Path -LiteralPath $_ -PathType Leaf)) {
-              throw "Artefact de release manquant : $_"
-            }
-          }
+          for f in "$exe" "$sig" "$msi" "$msi_sig" "$appimage" "$appimage_sig" "$deb" "$notes" "$latest"; do
+            if [ ! -f "$f" ]; then
+              echo "Artefact de release manquant : $f" >&2
+              exit 1
+            fi
+          done
 
-          Write-Host "Artefacts validés :"
-          Get-Item -LiteralPath $exe, $sig, $msiFile, $msiSig, $latest | Select-Object Name, Length
+          echo "Artefacts validés :"
+          ls -la "$exe" "$sig" "$msi" "$msi_sig" "$appimage" "$appimage_sig" "$deb" "$latest"
 
-          # If release already exists (e.g. tag pushed manually), upload assets to it
-          $existing = gh release view $tag 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Release $tag already exists. Updating notes and assets..."
-            gh release edit $tag `
-              --title "ZkPlayer Desktop $tag" `
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists. Updating notes and assets..."
+            gh release edit "$tag" \
+              --title "ZkPlayer Desktop $tag" \
               --notes-file "$notes"
-            gh release upload $tag "$exe" "$sig" "$msiFile" "$msiSig" "$latest" --clobber
-          } else {
-            gh release create $tag `
-              --title "ZkPlayer Desktop $tag" `
-              --notes-file "$notes" `
-              "$exe" "$sig" "$msiFile" "$msiSig" "$latest"
-          }
+            gh release upload "$tag" "$exe" "$sig" "$msi" "$msi_sig" "$appimage" "$appimage_sig" "$deb" "$latest" --clobber
+          else
+            gh release create "$tag" \
+              --title "ZkPlayer Desktop $tag" \
+              --notes-file "$notes" \
+              "$exe" "$sig" "$msi" "$msi_sig" "$appimage" "$appimage_sig" "$deb" "$latest"
+          fi
