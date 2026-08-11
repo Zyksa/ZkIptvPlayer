@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     strategy:
@@ -30,6 +34,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy,rustfmt
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
 
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'
