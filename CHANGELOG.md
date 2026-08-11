@@ -2,6 +2,19 @@
 
 Toutes les évolutions importantes de ZkPlayer Desktop sont répertoriées ici.
 
+## [1.1.4] - 2026-08-11
+
+### Nouveautés
+
+- Support Linux : générateurs AppImage et .deb, en plus des installateurs Windows.
+- Téléchargement automatique de FFmpeg sous Linux (build statique).
+- Ouverture des liens externes et du lecteur VLC externe fonctionnelle sous Linux.
+
+### Corrections
+
+- La barre de recherche temporelle ne réinitialisait plus le minuteur à 0:01 après un déplacement manuel.
+- Réduction d'un bref grésillement audio lors d'une recherche dans la timeline (redémarrage de FFmpeg).
+
 ## [1.1.3] - 2026-08-10
 
 ### Maintenance
