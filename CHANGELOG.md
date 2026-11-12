@@ -2,6 +2,12 @@
 
 Toutes les évolutions importantes de ZkPlayer Desktop sont répertoriées ici.
 
+## [Non publié]
+
+### Nouveautés
+
+- Mode web sans exécutable ni signature : `start-web.bat` (ou `npm run web`) ouvre la même interface dans le navigateur, et un clic sur une chaîne, un film ou un épisode lance la lecture dans VLC. Un petit serveur Node local (sans dépendance) relaie le catalogue IPTV et pilote VLC.
+
 ## [1.1.4] - 2026-08-11
 
 ### Nouveautés

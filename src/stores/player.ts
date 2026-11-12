@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { PlayableMedia, AudioTrackInfo, SubtitleTrackInfo } from '@/types/iptv'
+import { isTauri } from '@/services/tauri'
+import { openInVlc } from '@/services/web-relay'
+
+export interface VlcNotice {
+  id: number
+  kind: 'pending' | 'success' | 'error'
+  message: string
+}
 
 export const usePlayerStore = defineStore('player', () => {
   const currentMedia = ref<PlayableMedia | null>(null)
@@ -20,7 +28,46 @@ export const usePlayerStore = defineStore('player', () => {
 
   const seekTarget = ref<number | null>(null)
 
+  // Web mode (plain browser, no Tauri): playback is delegated to VLC through
+  // the local server, so no in-app decoding is ever needed.
+  const vlcNotice = ref<VlcNotice | null>(null)
+  let noticeSeq = 0
+  let noticeTimer: ReturnType<typeof setTimeout> | null = null
+
+  function showVlcNotice(kind: VlcNotice['kind'], message: string, autoHideMs = 0) {
+    if (noticeTimer) clearTimeout(noticeTimer)
+    noticeTimer = null
+    const id = ++noticeSeq
+    vlcNotice.value = { id, kind, message }
+    if (autoHideMs > 0) {
+      noticeTimer = setTimeout(() => {
+        if (vlcNotice.value?.id === id) vlcNotice.value = null
+      }, autoHideMs)
+    }
+  }
+
+  function dismissVlcNotice() {
+    if (noticeTimer) clearTimeout(noticeTimer)
+    noticeTimer = null
+    vlcNotice.value = null
+  }
+
+  async function sendToVlc(media: PlayableMedia) {
+    const title = media.title
+    showVlcNotice('pending', `Ouverture dans VLC : ${title}`)
+    try {
+      await openInVlc(media.streamUrl, title)
+      showVlcNotice('success', `Lecture dans VLC : ${title}`, 3500)
+    } catch (e) {
+      showVlcNotice('error', e instanceof Error ? e.message : String(e), 8000)
+    }
+  }
+
   function playMedia(media: PlayableMedia) {
+    if (!isTauri()) {
+      void sendToVlc(media)
+      return
+    }
     currentMedia.value = media
     currentTime.value = 0
     duration.value = media.duration || 0
@@ -85,6 +132,8 @@ export const usePlayerStore = defineStore('player', () => {
     subtitleTracks,
     selectedSubtitleTrack,
     seekTarget,
+    vlcNotice,
+    dismissVlcNotice,
     playMedia,
     togglePlay,
     setPlaying,

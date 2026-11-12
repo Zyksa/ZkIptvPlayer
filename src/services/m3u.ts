@@ -1,5 +1,5 @@
 import type { Category, LiveChannel, Movie, Series } from '@/types/iptv'
-import { isTauri, proxyFetch } from './tauri'
+import { proxyFetch } from './tauri'
 
 export interface ParsedM3uPlaylist {
   liveCategories: Category[]
@@ -170,18 +170,8 @@ function flattenResult(result: MutablePlaylist): ParsedM3uPlaylist {
 
 export const M3uService = {
   async parseM3uFromUrl(playlistUrl: string): Promise<ParsedM3uPlaylist> {
-    let rawText = ''
-    if (isTauri()) {
-      try {
-        rawText = await proxyFetch(playlistUrl)
-      } catch {
-        const res = await fetch(playlistUrl)
-        rawText = await res.text()
-      }
-    } else {
-      const res = await fetch(playlistUrl)
-      rawText = await res.text()
-    }
+    // Native proxy in Tauri, local relay in the browser (playlist servers send no CORS headers).
+    const rawText = await proxyFetch(playlistUrl)
 
     return this.parseM3uText(rawText)
   },
@@ -232,18 +222,8 @@ export const M3uService = {
     onProgress?: (done: number, total: number) => void,
     chunkLines = 500
   ): Promise<ParsedM3uPlaylist> {
-    let rawText = ''
-    if (isTauri()) {
-      try {
-        rawText = await proxyFetch(playlistUrl)
-      } catch {
-        const res = await fetch(playlistUrl)
-        rawText = await res.text()
-      }
-    } else {
-      const res = await fetch(playlistUrl)
-      rawText = await res.text()
-    }
+    // Native proxy in Tauri, local relay in the browser (playlist servers send no CORS headers).
+    const rawText = await proxyFetch(playlistUrl)
 
     return this.parseM3uTextAsync(rawText, onProgress, chunkLines)
   },

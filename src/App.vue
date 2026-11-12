@@ -27,14 +27,17 @@
       <!-- Video Player Fullscreen Overlay -->
       <VideoPlayer v-if="playerStore.currentMedia" />
 
-      <!-- FFmpeg auto-download modal -->
-      <FfmpegDownloadModal />
+      <!-- FFmpeg auto-download modal (desktop only: web mode plays in VLC) -->
+      <FfmpegDownloadModal v-if="desktop" />
+
+      <!-- Web mode: feedback when a stream is sent to VLC -->
+      <VlcToast v-if="!desktop" />
     </div>
 
     <!-- Auto Updater Notification Modal
          Mounted at top level (not gated behind authentication) so the update
          check runs at startup regardless of login state. Overlay is fixed/z-50. -->
-    <UpdateModal />
+    <UpdateModal v-if="desktop" />
   </div>
 </template>
 
@@ -46,6 +49,8 @@ import LoginModal from '@/components/LoginModal.vue'
 import UpdateModal from '@/components/UpdateModal.vue'
 import FfmpegDownloadModal from '@/components/FfmpegDownloadModal.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import VlcToast from '@/components/VlcToast.vue'
+import { isTauri } from '@/services/tauri'
 
 import { useAuthStore } from '@/stores/auth'
 import { useIptvStore } from '@/stores/iptv'
@@ -64,6 +69,8 @@ const VideoPlayer = defineAsyncComponent(() => import('@/components/VideoPlayer.
 const authStore = useAuthStore()
 const iptvStore = useIptvStore()
 const playerStore = usePlayerStore()
+// false in web mode (plain browser served by server/web-server.mjs)
+const desktop = isTauri()
 
 const activeViewComponent = computed(() => ({
   home: HomeView,

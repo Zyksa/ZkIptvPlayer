@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { FfmpegStatus } from './ffmpeg'
+import { openInVlc, relayFetchText } from './web-relay'
 
 export interface SystemCapabilities {
   hardware_acceleration: string
@@ -129,7 +130,13 @@ export const openInExternalPlayer = async (url: string): Promise<boolean> => {
       return window.open(url, '_blank') !== null
     }
   }
-  return window.open(url, '_blank') !== null
+  try {
+    await openInVlc(url)
+    return true
+  } catch (e) {
+    console.warn('Web relay could not open VLC:', e)
+    return false
+  }
 }
 
 export const probeDuration = async (url: string): Promise<number> => {
@@ -185,7 +192,9 @@ export const proxyFetch = async (url: string, headers?: Record<string, string>):
     } catch (e) {
       console.warn('Tauri proxy_http_request failed, falling back to standard fetch:', e)
     }
+    const res = await fetch(url, { headers })
+    return await res.text()
   }
-  const res = await fetch(url, { headers })
-  return await res.text()
+  // Browser (web mode): IPTV servers send no CORS headers, go through the local relay.
+  return relayFetchText(url)
 }

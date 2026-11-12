@@ -40,6 +40,36 @@ Regardez la **TV en direct**, les **films** et les **séries** depuis vos playli
 
 ---
 
+## 🌐 Mode web : navigateur + VLC (sans .exe, sans signature)
+
+La même interface (TV en direct, films, séries, recherche, favoris) tourne dans votre
+navigateur ; un clic sur une chaîne, un film ou un épisode ouvre la lecture dans **VLC**.
+Aucun exécutable à installer ni à signer, aucun décodage côté page web.
+
+**Prérequis :** [Node.js](https://nodejs.org/) ≥ 18 et [VLC](https://www.videolan.org/vlc/).
+
+1. Double-cliquez sur **`start-web.bat`** (la première fois, il installe les dépendances et construit l'interface).
+2. Le navigateur s'ouvre sur `http://localhost:14300`. Connectez-vous comme dans l'app.
+3. Cliquez sur un contenu : VLC se lance. Cliquez sur un autre : la même fenêtre VLC change de flux.
+
+Laissez la fenêtre du serveur ouverte pendant l'utilisation. Après une mise à jour du code,
+relancez avec `npm run web` pour reconstruire l'interface.
+
+Équivalents en ligne de commande :
+
+```bash
+npm run web        # construit l'interface puis démarre le serveur
+npm run web:start  # démarre le serveur sans reconstruire
+npm run dev        # développement : http://localhost:1420, même comportement
+```
+
+**Pourquoi un petit serveur local ?** Un navigateur ne peut ni lire le catalogue d'un
+serveur IPTV (pas d'en-têtes CORS), ni lancer VLC. `server/web-server.mjs` (Node seul,
+sans dépendance) relaie le catalogue et lance VLC. Il n'écoute que sur `127.0.0.1` et
+refuse les appels venant d'autres sites.
+
+---
+
 ## 🛠️ Construire son propre `.exe`
 
 ### Prérequis

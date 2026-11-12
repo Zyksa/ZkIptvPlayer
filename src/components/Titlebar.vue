@@ -25,8 +25,9 @@
         <Maximize2 class="w-3.5 h-3.5" />
       </button>
 
-      <!-- Minimize -->
+      <!-- Minimize / Maximize / Close: desktop only (a browser tab has its own) -->
       <button
+        v-if="desktop"
         @click="handleMinimize"
         title="Réduire"
         class="w-10 h-full flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-colors"
@@ -36,6 +37,7 @@
 
       <!-- Maximize / Restore -->
       <button
+        v-if="desktop"
         @click="handleMaximize"
         title="Agrandir / Restaurer"
         class="w-10 h-full flex items-center justify-center text-slate-400 hover:text-slate-100 hover:bg-white/10 transition-colors"
@@ -45,6 +47,7 @@
 
       <!-- Close -->
       <button
+        v-if="desktop"
         @click="handleClose"
         title="Fermer l'application"
         class="w-11 h-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-rose-600 transition-colors"
@@ -57,10 +60,11 @@
 
 <script setup lang="ts">
 import { Minus, Square, Maximize2, X } from 'lucide-vue-next'
-import { minimizeWindow, toggleMaximizeWindow, closeWindow, toggleFullscreen } from '@/services/tauri'
+import { minimizeWindow, toggleMaximizeWindow, closeWindow, toggleFullscreen, isTauri } from '@/services/tauri'
 import { usePlayerStore } from '@/stores/player'
 
 const playerStore = usePlayerStore()
+const desktop = isTauri()
 
 const handleMinimize = async () => {
   await minimizeWindow()

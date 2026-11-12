@@ -10,6 +10,7 @@ import type {
   EPGProgram
 } from '@/types/iptv'
 import { isTauri, proxyFetch } from './tauri'
+import { relayFetchText } from './web-relay'
 
 const ALLOWED_PROTOCOLS = ['http:', 'https:']
 const DEFAULT_PROTOCOL = 'http:'
@@ -91,6 +92,9 @@ async function fetchJson<T>(url: string): Promise<T> {
       } catch (err) {
         console.warn('Native proxy fetch failed, falling back to standard fetch:', err)
       }
+    } else {
+      // Browser (web mode): Xtream servers send no CORS headers, go through the local relay.
+      return safeJsonParse<T>(await relayFetchText(url, controller.signal))
     }
 
     const response = await fetch(url, { signal: controller.signal })
