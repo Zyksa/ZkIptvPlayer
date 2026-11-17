@@ -43,7 +43,9 @@ const cleanUrl = (url: string): string => {
     throw new Error('L\'URL serveur ne doit pas contenir d\'identifiants intégrés.')
   }
 
-  return parsed.toString()
+  // URL.toString() turns "http://host:8080" into "http://host:8080/"; strip it
+  // so callers appending "/series/…" don't produce "host:8080//series/…".
+  return parsed.toString().replace(/\/+$/, '')
 }
 
 function sanitizeIdentifier(value: string): string {
